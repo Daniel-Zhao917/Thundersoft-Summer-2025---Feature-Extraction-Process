@@ -11,23 +11,31 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
+input_path = "/Users/zhaoda/Desktop/ThundersoftSummer2025/Thundersoft-Summer-2025---Feature-Extraction-Process/Processed_features"
+output_path = "/Users/zhaoda/Desktop/ThundersoftSummer2025/Thundersoft-Summer-2025---Feature-Extraction-Process/Step2Deliverables"
+
+
 cols = [
     "frame",
     "timestamp",
     'eye_lmk_x_36', 'eye_lmk_y_36', 'eye_lmk_x_42', 'eye_lmk_y_42', 'eye_lmk_x_38', 'eye_lmk_y_38', 'eye_lmk_x_40', 'eye_lmk_y_40', 'eye_lmk_x_46', 'eye_lmk_y_46', 'eye_lmk_x_44', 'eye_lmk_y_44',
     'eye_lmk_x_8', 'eye_lmk_y_8', 'eye_lmk_x_14', 'eye_lmk_y_14', 'eye_lmk_x_10', 'eye_lmk_y_10', 'eye_lmk_x_12', 'eye_lmk_y_12', 'eye_lmk_x_18', 'eye_lmk_y_18', 'eye_lmk_x_16', 'eye_lmk_y_16',
     'eye_lmk_x_51', 'eye_lmk_y_51', 'eye_lmk_x_55', 'eye_lmk_y_55', 
-    'eye_lmk_x_23', 'eye_lmk_y_23', 'eye_lmk_x_27', 'eye_lmk_y_27',
-    "AU01_r", "AU02_r", "AU04_r", "AU05_r", "AU06_r", "AU07_r", 
-    "AU09_r", "AU10_r", "AU12_r", "AU14_r", "AU15_r", "AU17_r", 
-    "AU20_r", "AU23_r", "AU25_r", "AU26_r", "AU45_r",
-    "AU01_c", "AU02_c", "AU04_c", "AU05_c", "AU06_c", "AU07_c",
-    "AU09_c", "AU10_c", "AU12_c", "AU14_c", "AU15_c", "AU17_c",
-    "AU20_c", "AU23_c", "AU25_c", "AU26_c", "AU28_c", "AU45_c",
+    'eye_lmk_x_23', 'eye_lmk_y_23', 'eye_lmk_x_27', 'eye_lmk_y_27', 
     "gaze_angle_x", "gaze_angle_y",
     "pose_Rx", "pose_Ry", "pose_Rz"
 
 ]
+
+'''
+"AU01_r", "AU02_r", "AU04_r", "AU05_r", "AU06_r", "AU07_r", 
+"AU09_r", "AU10_r", "AU12_r", "AU14_r", "AU15_r", "AU17_r", 
+"AU20_r", "AU23_r", "AU25_r", "AU26_r", "AU45_r",
+"AU01_c", "AU02_c", "AU04_c", "AU05_c", "AU06_c", "AU07_c",
+"AU09_c", "AU10_c", "AU12_c", "AU14_c", "AU15_c", "AU17_c",
+"AU20_c", "AU23_c", "AU25_c", "AU26_c", "AU28_c", "AU45_c",  
+''' 
+
 
 undesired_cols = [
     'eye_lmk_x_36', 'eye_lmk_y_36', 'eye_lmk_x_42', 'eye_lmk_y_42', 'eye_lmk_x_38', 'eye_lmk_y_38', 'eye_lmk_x_40', 'eye_lmk_y_40', 'eye_lmk_x_46', 'eye_lmk_y_46', 'eye_lmk_x_44', 'eye_lmk_y_44',
@@ -119,4 +127,4 @@ if __name__ == "__main__":
     #    print("Usage: python3 Batch_Processing.py <input_dir> <output_dir>")
     #    sys.exit(1)
     
-    main(sys.argv[1], sys.argv[2])
+    main(input_path, output_path)
