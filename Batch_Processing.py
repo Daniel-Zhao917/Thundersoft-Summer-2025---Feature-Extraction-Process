@@ -14,8 +14,6 @@ from pathlib import Path
 cols = [
     "frame",
     "timestamp",
-    "confidence",
-    "success",
     'eye_lmk_x_36', 'eye_lmk_y_36', 'eye_lmk_x_42', 'eye_lmk_y_42', 'eye_lmk_x_38', 'eye_lmk_y_38', 'eye_lmk_x_40', 'eye_lmk_y_40', 'eye_lmk_x_46', 'eye_lmk_y_46', 'eye_lmk_x_44', 'eye_lmk_y_44',
     'eye_lmk_x_8', 'eye_lmk_y_8', 'eye_lmk_x_14', 'eye_lmk_y_14', 'eye_lmk_x_10', 'eye_lmk_y_10', 'eye_lmk_x_12', 'eye_lmk_y_12', 'eye_lmk_x_18', 'eye_lmk_y_18', 'eye_lmk_x_16', 'eye_lmk_y_16',
     'eye_lmk_x_51', 'eye_lmk_y_51', 'eye_lmk_x_55', 'eye_lmk_y_55', 
@@ -36,6 +34,7 @@ undesired_cols = [
     'eye_lmk_x_8', 'eye_lmk_y_8', 'eye_lmk_x_14', 'eye_lmk_y_14', 'eye_lmk_x_10', 'eye_lmk_y_10', 'eye_lmk_x_12', 'eye_lmk_y_12', 'eye_lmk_x_18', 'eye_lmk_y_18', 'eye_lmk_x_16', 'eye_lmk_y_16',
     'eye_lmk_x_51', 'eye_lmk_y_51', 'eye_lmk_x_55', 'eye_lmk_y_55', 
     'eye_lmk_x_23', 'eye_lmk_y_23', 'eye_lmk_x_27', 'eye_lmk_y_27'
+
 ]
 
 def calculate_ear(row):
