@@ -28,6 +28,7 @@ cols = [
 ]
 
 '''
+If AUs need to be added
 "AU01_r", "AU02_r", "AU04_r", "AU05_r", "AU06_r", "AU07_r", 
 "AU09_r", "AU10_r", "AU12_r", "AU14_r", "AU15_r", "AU17_r", 
 "AU20_r", "AU23_r", "AU25_r", "AU26_r", "AU45_r",
@@ -123,8 +124,4 @@ def main(input_dir, output_dir):
     print("\nProcessing complete! Enhanced CSVs saved to:", output_dir)
 
 if __name__ == "__main__":
-    #if len(sys.argv) != 3:
-    #    print("Usage: python3 Batch_Processing.py <input_dir> <output_dir>")
-    #    sys.exit(1)
-    
     main(input_path, output_path)
