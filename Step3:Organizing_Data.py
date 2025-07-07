@@ -22,27 +22,45 @@ def DataFrame_normalize(data):
     data["P-scale"] = z_score_normalize(data["P-scale"])
     return data
 
-# %%
-CH01_19DA666D_0_preprocessing = DataFrame_normalize(pd.read_csv("Step2Deliverables/CH01_19DA666D_0.csv"))
-CH01_19DA666D_5_preprocessing = DataFrame_normalize(pd.read_csv("Step2Deliverables/CH01_19DA666D_5.csv"))
-CH01_19DA666D_10_preprocessing = DataFrame_normalize(pd.read_csv("Step2Deliverables/CH01_19DA666D_10.csv"))
-CH01_4B725FCB_0_preprocessing = DataFrame_normalize(pd.read_csv("Step2Deliverables/CH01_4B725FCB_0.csv"))
-CH01_4B725FCB_5_preprocessing = DataFrame_normalize(pd.read_csv("Step2Deliverables/CH01_4B725FCB_5.csv"))
-CH01_4B725FCB_10_preprocessing = DataFrame_normalize(pd.read_csv("Step2Deliverables/CH01_4B725FCB_10.csv"))
-CH02_19DA666D_0_preprocessing = DataFrame_normalize(pd.read_csv("Step2Deliverables/CH02_19DA666D_0.csv"))
-CH02_19DA666D_5_preprocessing = DataFrame_normalize(pd.read_csv("Step2Deliverables/CH02_19DA666D_5.csv"))
-CH02_19DA666D_10_preprocessing = DataFrame_normalize(pd.read_csv("Step2Deliverables/CH02_19DA666D_10.csv"))
-CH02_4B725FCB_0_preprocessing = DataFrame_normalize(pd.read_csv("Step2Deliverables/CH02_4B725FCB_0.csv"))
-CH02_4B725FCB_5_preprocessing = DataFrame_normalize(pd.read_csv("Step2Deliverables/CH02_4B725FCB_5.csv"))
-CH02_4B725FCB_10_preprocessing = DataFrame_normalize(pd.read_csv("Step2Deliverables/CH02_4B725FCB_10.csv"))
-
-# %%
-
 # This function will extract the seven required attributes
 # Note: "P-scale" is calculated as the mean of "Pupil_Scale (Left)" and "Pupil_Scale (Right)"
 # We didn't rename all the attribute to match the name given on the spec. For example, the "gaze_x" attribute on the spec is named as "gaze_angle_x" here
 def preprocessing(data):
     return data[ ["gaze_angle_x", "gaze_angle_y", "EAR", "pose_Rx", "pose_Ry", "pose_Rz", "P-scale"] ]
+
+
+# path is the path that doesn't contain the csv name nor the "/" before the csv name, for example, "Step2Deliverable," 
+# or "/Users/stevenwang/Desktop/日后可能会有用的文件/BAC Classification/Step2Deliverables"
+
+# file name list is a iteratable container that consist the names of the people, for example, a list of ["19DA666D", "4B725FCB_0"]
+
+# The premise is that we assume all the csv files are stored in a same folder. We also assume that the structure of the csv files
+# are 6 csv files per person, each person has 3 BAC levels, and then 2 channels. So for a person with name "Yuelin," the csv files are
+# "CHO1_Yuelin_0.csv," "CHO1_Yuelin_5.csv," "CHO1_Yuelin_10.csv," "CHO2_Yuelin_0.csv," "CHO2_Yuelin_5.csv," and "CHO2_Yuelin_10.csv"
+
+# Will return a series with MultiIndex. If only channel 2, then the index is 2D, first dimension is people name, second is BAC level in ["0", "5", "10"].
+# Please note that BAC level is string, not numeric. For example, result["19DA666D"]["0"] will return the DataFrame of channel 2 of BAC 0 of "19DA666D"  
+# If only channel 2 is false, then the index is 3D, first dimension is people name, second is BAC level, third is channel in ["CH01", "CH02"]
+# For example, result["19DA666D"]["0"]["CH01"] will return the DataFrame of channel 1 of BAC 0 of "19DA666D"
+def overall_normalize(path, file_name_list, only_channel_2):
+    result_list = []
+    channel_list = ["CH02"]
+    if not only_channel_2:
+        channel_list.append("CH01")
+    for x in file_name_list:
+        for BAC in ["0", "5", "10"]:    
+            for chapter in channel_list:    
+                file_path = path + "/" + chapter + "_" + x + "_" + BAC + ".csv"
+                result_list.append(preprocessing(DataFrame_normalize(pd.read_csv(file_path))))
+    if only_channel_2:
+        series_index = pd.MultiIndex.from_product([file_name_list, ["0", "5", "10"]], names = ["people name", "BAC level"])
+    else:
+        series_index = pd.MultiIndex.from_product([file_name_list, ["0", "5", "10"], ["CH01", "CH02"]], names = ["people name", "BAC level", "channel"])
+    series = pd.Series(result_list, index = series_index)
+    return series
+
+
+# %%
 
 # data should be a pandas DataFrame
 # Will return a 3D list, the dimension is (total rows - 149) × 150 × 7
@@ -69,31 +87,35 @@ def label_list(length, label):
         result.append(label)
     return result
 
-# data is a normalized pandas DataFrame (after the function "DataFrame_normalize")
-# returns a tuple, the first element is the window numbers × 150 × 7 dataset, the last element is the label
-def dataset_deliver(data, label):
-    overall_data = preprocessing(data)
-    return (sliding_window_list(overall_data), label_list(overall_data.shape[0], label))
+# series is a sequential container, if margin is 0.05, then when any times of 5% is completed (like 10% and 75%),
+# will print "x% complete"
+def print_progress(series, margin, progress):
+    if len(series) < 6:
+        pass
+    percent = 0
+    while (percent < 1):
+        percent = percent + margin
+        if progress == int(len(series) * percent):
+            print(f"{percent * 100}% complete")
+            return percent
+
+# series is basically the MultiIndex series from the overall normalize function. Window series and label series
+# both have the same MultiIndex as the "series" argument. Window series stores the windows, and label series stores the labels
+def dataset_deliver(series):
+    windows = []
+    labels = []
+    BAC_level = 0
+    progress = 0
+    for table in series:
+        windows.append(sliding_window_list(table))
+        labels.append(label_list(table.shape[0], BAC_level % 3))
+        BAC_level = BAC_level + 1
+        progress = progress + 1
+        print_progress(series, 0.1, progress) # prints when times of 10% is completed
+    window_series = pd.Series(windows, index = series.index)
+    label_series = pd.Series(labels, index = series.index)
+    return (window_series, label_series)
 
 # %%
-CH01_19DA666D_0, CH01_19DA666D_0_label = dataset_deliver(CH01_19DA666D_0_preprocessing, 0)
-CH01_19DA666D_5, CH01_19DA666D_5_label = dataset_deliver(CH01_19DA666D_5_preprocessing, 1)
-CH01_19DA666D_10, CH01_19DA666D_10_label = dataset_deliver(CH01_19DA666D_10_preprocessing, 2)
-CH01_4B725FCB_0, CH01_4B725FCB_0_label = dataset_deliver(CH01_4B725FCB_0_preprocessing, 0)
-CH01_4B725FCB_5, CH01_4B725FCB_5_label = dataset_deliver(CH01_4B725FCB_5_preprocessing, 1)
-CH01_4B725FCB_10, CH01_4B725FCB_10_label = dataset_deliver(CH01_4B725FCB_10_preprocessing, 2)
-CH02_19DA666D_0, CH02_19DA666D_0_label = dataset_deliver(CH02_19DA666D_0_preprocessing, 0)
-CH02_19DA666D_5, CH02_19DA666D_5_label = dataset_deliver(CH02_19DA666D_5_preprocessing, 1)
-CH02_19DA666D_10, CH02_19DA666D_10_label = dataset_deliver(CH02_19DA666D_10_preprocessing, 2)
-CH02_4B725FCB_0, CH02_4B725FCB_0_label = dataset_deliver(CH02_4B725FCB_0_preprocessing, 0)
-CH02_4B725FCB_5, CH02_4B725FCB_5_label = dataset_deliver(CH02_4B725FCB_5_preprocessing, 1)
-CH02_4B725FCB_10, CH02_4B725FCB_10_label = dataset_deliver(CH02_4B725FCB_10_preprocessing, 2)
 
 # %%
-
-
-
-
-# %%
-
-
