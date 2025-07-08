@@ -94,9 +94,9 @@ def print_progress(series, margin, progress):
         pass
     percent = 0
     while (percent < 1):
-        percent = percent + margin
+        percent = round(percent + margin, 2)
         if progress == int(len(series) * percent):
-            print(f"{percent * 100}% complete")
+            print(f"{ int(percent * 100) }% complete, {progress}/{len(series)}")
             return percent
 
 # series is basically the MultiIndex series from the overall normalize function. Window series and label series
