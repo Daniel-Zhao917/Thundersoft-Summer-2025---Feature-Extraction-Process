@@ -11,8 +11,8 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
-input_path = "/Users/zhaoda/Desktop/ThundersoftSummer2025/Group1/Extracted_Output"
-output_path = "/Users/zhaoda/Desktop/ThundersoftSummer2025/Group1/Step2"
+input_path = "/Users/zhaoda/Desktop/ThundersoftSummer2025/Data/Processed_features"
+output_path = "/Users/zhaoda/Desktop/ThundersoftSummer2025/Thundersoft-Summer-2025---Feature-Extraction-Process/OneDrive_Group1_Data"
 
 
 cols = [
