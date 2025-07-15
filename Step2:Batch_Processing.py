@@ -11,13 +11,14 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
-input_path = "/Users/zhaoda/Desktop/ThundersoftSummer2025/Thundersoft-Summer-2025---Feature-Extraction-Process/Processed_features"
-output_path = "/Users/zhaoda/Desktop/ThundersoftSummer2025/Thundersoft-Summer-2025---Feature-Extraction-Process/Step2Deliverables"
+input_path = "/Users/zhaoda/Desktop/ThundersoftSummer2025/Group1/Extracted_Output"
+output_path = "/Users/zhaoda/Desktop/ThundersoftSummer2025/Group1/Step2"
 
 
 cols = [
     "frame",
     "timestamp",
+    "confidence",
     'eye_lmk_x_36', 'eye_lmk_y_36', 'eye_lmk_x_42', 'eye_lmk_y_42', 'eye_lmk_x_38', 'eye_lmk_y_38', 'eye_lmk_x_40', 'eye_lmk_y_40', 'eye_lmk_x_46', 'eye_lmk_y_46', 'eye_lmk_x_44', 'eye_lmk_y_44',
     'eye_lmk_x_8', 'eye_lmk_y_8', 'eye_lmk_x_14', 'eye_lmk_y_14', 'eye_lmk_x_10', 'eye_lmk_y_10', 'eye_lmk_x_12', 'eye_lmk_y_12', 'eye_lmk_x_18', 'eye_lmk_y_18', 'eye_lmk_x_16', 'eye_lmk_y_16',
     'eye_lmk_x_51', 'eye_lmk_y_51', 'eye_lmk_x_55', 'eye_lmk_y_55', 
@@ -90,6 +91,35 @@ def calculate_pupil_scale(row, side):
     except:
         return 0.0  # Return 0 if landmarks missing
 
+def filter_invalid_rows(df):
+    """Remove rows with physically impossible values"""
+    # Keep only rows where confidence > 0.75 (adjust threshold as needed)
+    df = df[df['confidence'] > 0.75]
+    
+    # Gaze angle sanity checks (typical range ±30 degrees)
+    df = df[
+        (df['gaze_angle_x'].between(-0.8, 0.8)) & 
+        (df['gaze_angle_y'].between(-0.8, 0.8))
+    ]
+    
+    # Head pose sanity checks (degrees)
+    df = df[
+        (df['pose_Rx'].between(-0.8, 0.8)) &  # Pitch
+        (df['pose_Ry'].between(-1.5708, 1.5708)) &  # Yaw
+        (df['pose_Rz'].between(-0.8, 0.8))    # Roll
+    ]
+    
+    # EAR validity (0.05-0.4 for normal eyes, <0.2 during blinks)
+    df = df[df['EAR'].between(0.02, 0.4)]
+    
+    # Pupil scale validity (3-30px typical for most video resolutions)
+    df = df[
+        (df['Pupil_Scale (Left)'].between(3, 30)) & 
+        (df['Pupil_Scale (Right)'].between(3, 30))
+    ]
+    
+    return df
+
 def process_csv(input_csv, output_dir):
     """Process a single CSV file"""
     df = pd.read_csv(input_csv, usecols=cols)
@@ -100,7 +130,8 @@ def process_csv(input_csv, output_dir):
     df['Pupil_Scale (Right)'] = df.apply(calculate_pupil_scale, axis=1, args=("right",))
 
     df = df.drop(columns = undesired_cols)
-    
+    df = filter_invalid_rows(df)
+    df = df.reset_index(drop=True)
     # Save enhanced CSV
     out_path = Path(output_dir) / Path(input_csv).name
     df.to_csv(out_path, index=False)
