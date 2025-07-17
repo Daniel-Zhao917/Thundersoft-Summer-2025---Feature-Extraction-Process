@@ -147,7 +147,7 @@ def dataset_deliver(series):
 # For each window csv file, there are seven attributes, "gaze_x," "gaze_y," "pose_Rx," "pose_Ry," "pose_Rz," "EAR," and "P-scale." 
 # For each label csv file, there will be one attribute, "label"
 
-# For one person with three BAC level and one channel, processing time is approximately four minutes, the csv files is about 1 GB
+# For one person with three BAC level and one channel, processing time is approximately one minute, the csv files is about 1 GB
 def dataset_export(window_series, label_series):
     # constructing name list, BAC list, channel list, and exported file path (will provide detail explanation few lines later)
     name_list = window_series.index.get_level_values(0).unique()
