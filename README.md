@@ -1,22 +1,35 @@
 # Thundersoft-Summer-2025---Feature-Extraction-Process
-## Extraction
+
+## Virtual Machine Data Explanation
+This section is everything you need to know about files on the virtual machine. The "Data Extraction" section is about how we extract csv files from the videos on our ThunderSoft and onedrive dataset, and the "Overall Data Processing Structure" is about how we process the data in detail.
+
+### Normalization
+The value is z-score normalizing. Each person has 3 BAC levels, each BAC level, if only process channel 2, has 1 video, thus each person has 3 videos. Each video is a dataframe, for each attribute, normalization is (value - mean) / std. For each person (if only channel 2, then 3 videos), will calculate the minimal frame (say if BAC 0 has 1000 frames, BAC 5 has 2000 frames, BAC 10 has 3000 frames, then the minimal frame is 1000), then will only extract the head of the video with more frame (will only extract the first 1000 frames of BAC 5 and 10).
+
+### Window and Label Structure
+Say we have a dataframe of 1000 frames, this dataframe has 7 columns. Then there will be (total number of frames - 149) number of windows and one label. Each window is a 150 × 7 table, 150 rows, 7 columns. Each row is one frame, columns are ["gaze_x", "gaze_y", "EAR", "pose_Rx", "pose_Ry", "pose_Rz", "P-scale"]. The label is simply a (total number of frames) × 1 table. Each row is the label of the corresponding window (so row 624 is the 624th window, this window has frame 624 to 773), the column is named "label."
+
+### File folder structure
+If only channel 2, then will have total of four folder levels. The first level is the grand folder. The second level is the name. Each folder in this level corresponds to one people, the name of the folder is simply the name, such as "19DA666D." Each people folder has three BAC level folders, the BAC level folder is the third folder level. The three BAC folder of each people is named "0," "5," and "10." In each BAC level folder, there's the exported window csvs and label csv, this is the fourth level. As explained above, there will be total number of frames - 149) number of windows and one label. Each window and label is a csv file in this level. The name of each window csv file is "CH02_{name}_{BAC level}_window_{window number}." For example, window 2389 of channel 2 of BAC level 5 of 4B725FCB will be in the folder "exported csv files (only channel 2)/4B725FCB/5," and is named "CH02_4B725FCB_5_window_2389.csv." For label file, the name is "CH02_{name}_{BAC level}_label."
+
+## Data Extraction
 So in our ThunderSoft dataset and onedrive dataset, we have total of fourteen people, named "4B725FCB", "19DA666D", "4B73E8AB", "4B73288B", "4BA9149B", "C60F509C", "C70E7E2C", "C719B90C", "C705493C", "DA9FFD3C", "DA96B45C", "DAA1F29C", "DAA49B9C", and "DAA110DC". Each people has three BAC levels, for each BAC level of a people, we have two channels, so the structure is 2 (the two people) × 3 (BAC levels) × 2 (channels). However, only "4B725FCB" and "19DA666D" (the first two people) has two channels (because this project currently only need channel two, so we omit channel one). Thus, the total number of csv files is 48 (2 × 6 + 12 × 3). The number of attributes for each csv file is not the same, but each all have "gaze_angle_x," "gaze_angle_y," "pose_Rx," "pose_Ry," "pose_Rz," "EAR," "Pupil_Scale (Left)," and "Pupil_Scale (Right)." So there's no "P-scale," but has "Pupil_Scale (Left)" and "Pupil_Scale (Right)."
 
 ## Overall Data Processing Structure
 There are 5 steps that process the 48 raw csv data. The first step is to calculate the P-scale and normalize the 7 attributes ("gaze_angle_x," "gaze_angle_y," "pose_Rx," "pose_Ry," "pose_Rz," "EAR," and "P-scale"). The second step is to extract these 7 attributes. The third step is to use the sliding window algorithm to create the dataset. The fourth step is to create the label for each dataset. The fifth step is to export csv. We will explain the steps each in a section. Above are the abstract methodologies, in the python file, we use 3 functions to perform the 5 steps, one will normalize and extract the data, one will create the window list and label list, one will export csv. We will also explain the functions each in a section.
 
-## Normalization
+### Normalization
 The calculation of P-scale is simply the average of "Pupil_Scale (Left)" and "Pupil_Scale (Right)." The normalization is z-score normalizing, (value - mean) / std.
 
-## Extraction
+### Extraction
 We simply just extract "gaze_angle_x," "gaze_angle_y," "pose_Rx," "pose_Ry," "pose_Rz," "EAR," and "P-scale." At this step, we didn't change the name of "gaze_angle_x," "gaze_angle_y" to "gaze_x" and "gaze_y." The name will change during the export step.
 
-## overall_normalize function
+### overall_normalize function
 In python, the overall_normalize function will normalize and extract data. The function takes three arguments: path (string), file_name_list (string), only_channel_2 (Boolean). path is the path that stores the csv data. path that doesn't contain the csv name nor the "/" before the csv name, for example, "Step2Deliverable." file name list is a iteratable container that consist the names of the people, for example, ["19DA666D", "4B725FCB", "4B73E8AB", "4B73288B", "4BA9149B", "C60F509C", "C70E7E2C", "C719B90C", "C705493C", "DA9FFD3C", "DA96B45C", "DAA1F29C", "DAA49B9C", "DAA110DC"] (the entire name list). only_channel_2 indicates whether to only process channel 2 data. All the csv data is required to store in a same folder. This function Will return a series with MultiIndex, each element is a DataFrame. MultiIndex is rather complex, you don't need to know how to use the result, as the result is supposed to directly pass to the next python function to create window list and label list. For the result, if only channel 2, then the index is 2D, first dimension is people name, second is BAC level in ["0", "5", "10"]. Please note that BAC level is string, not numeric. For example, result["19DA666D"]["0"] will return the DataFrame of channel 2 of BAC 0 of "19DA666D." If only channel 2 is false, then the index is 3D, first dimension is people name, second is BAC level, third is channel in ["CH01", "CH02"]. For example, result["19DA666D"]["0"]["CH01"] will return the DataFrame of channel 1 of BAC 0 of "19DA666D."
 
-## Sliding Window
+### Sliding Window
 Take the 0 BAC level, channel 1, person "4B725FCB" as an example. This csv file has 12423 rows. For window 1, we create a Python built-in list (so not a PyTorch tensor) with the dimension of 150 × 7. This window consist of frame 1 - 150 with all the 7 attributes. Let's say this list is called "list_1". list_1[0] will return a list with 7 elements, each is an attribute. Thus, this list is row-oriented, not the pandas style column-oriented (if is column-oriented, list_1[0] will return the first column (in this case, "gaze_angle_x", with a list of 150 elements)). For window 2, is frame 2 - 151. Because we have 12423 rows, we have a total of 12274 windows, the last one consists of frame 12274 to 12423. In the end, we have a list with dimension of (frame number - 149) × 150 × 7. list[0] will return the first window (a 150 × 7 list), list[0] [0] will return a list of 7. Because there are 48 csv files, we have 48 3D lists, each is a window.
 
-## Label
+### Label
 For each raw csv file, we create a 1D list with the length of frame number - 149. So for the above example, we have a list of 12274 elements, all of which are 0 (so BAC level 0.00). Because there are 48 csv files, we have 48 1D lists, each is a label. Please note that label is separate from window, so we actually have 96 lists, 48 are windows, 48 are labels.
 
