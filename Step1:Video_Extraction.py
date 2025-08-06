@@ -7,8 +7,8 @@ Creates CSVs that contain *only* the 4 columns required by the paper.
 import subprocess
 from pathlib import Path
 
-input_dir  = Path("/Users/zhaoda/Desktop/ThundersoftSummer2025/Data").expanduser()
-output_dir = Path("/Users/zhaoda/Desktop/ThundersoftSummer2025/Data/Processed_features").expanduser()
+input_dir  = Path("/Users/zhaoda/Desktop/8:5 test out new feature extraction").expanduser()
+output_dir = Path("/Users/zhaoda/Desktop/8:5 test out new feature extraction/output").expanduser()
 output_dir.mkdir(exist_ok=True)
 
 for video in input_dir.glob("*.avi"):

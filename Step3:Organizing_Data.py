@@ -7,8 +7,8 @@ FrameFeatures/  →  (N_windows, 4) tensor per driver-BAC
 import os, numpy as np, pandas as pd
 from pathlib import Path
 
-DATA_DIR = "FrameFeatures"
-OUT_DIR  = "Windows"
+DATA_DIR = "/Users/zhaoda/Desktop/8:5 test out new feature extraction/Step 2 csvs"
+OUT_DIR  = "/Users/zhaoda/Desktop/8:5 test out new feature extraction/windows"
 WIN      = 150
 STRIDE   = 1
 BAC_MAP  = {"0":0, "5":1, "10":2}
