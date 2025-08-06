@@ -1,158 +1,69 @@
 #!/usr/bin/env python3
 """
-Process OpenFace output CSVs to add Eye Aspect Ratio (EAR) and Pupil Scale metrics
-Usage: python3 Batch_Processing.py /path/to/openface_csvs/ /output/path/
+Step-2  Frame-level feature extraction
+OpenFace CSV  →  frame-level metrics  →  cleaned CSV
+Usage:  python Step2_BatchProcessing.py <in_dir> <out_dir>
 """
 
-import os
-import sys
-import glob
-import pandas as pd
-import numpy as np
+import os, sys, glob, numpy as np, pandas as pd
 from pathlib import Path
 
-input_path = "/Users/zhaoda/Desktop/ThundersoftSummer2025/Data/Processed_features"
-output_path = "/Users/zhaoda/Desktop/ThundersoftSummer2025/Thundersoft-Summer-2025---Feature-Extraction-Process/OneDrive_Group1_Data"
+# ------------------------ CONFIG ------------------------
+IN_DIR  = sys.argv[1] if len(sys.argv) > 1 else "OpenFace_csvs"
+OUT_DIR = sys.argv[2] if len(sys.argv) > 2 else "FrameFeatures"
 
+# We only need the columns that end up becoming the 4 signals
+NEED_COLS = ["frame","timestamp","confidence",
+             # --- head pose (degrees) ---
+             "pose_Rx","pose_Ry","pose_Rz",
+             # --- gaze (radians) ---
+             "gaze_angle_x","gaze_angle_y",
+             # --- eye landmarks for EAR ---
+             "eye_lmk_x_36","eye_lmk_y_36","eye_lmk_x_37","eye_lmk_y_37",
+             "eye_lmk_x_38","eye_lmk_y_38","eye_lmk_x_39","eye_lmk_y_39",
+             "eye_lmk_x_40","eye_lmk_y_40","eye_lmk_x_41","eye_lmk_y_41",
+             "eye_lmk_x_42","eye_lmk_y_42","eye_lmk_x_43","eye_lmk_y_43",
+             "eye_lmk_x_44","eye_lmk_y_44","eye_lmk_x_45","eye_lmk_y_45",
+             "eye_lmk_x_46","eye_lmk_y_46","eye_lmk_x_47","eye_lmk_y_47",
+             # --- PDM scale (OpenFace shape parameter 0) ---
+             "p_scale"]
 
-cols = [
-    "frame",
-    "timestamp",
-    "confidence",
-    'eye_lmk_x_36', 'eye_lmk_y_36', 'eye_lmk_x_42', 'eye_lmk_y_42', 'eye_lmk_x_38', 'eye_lmk_y_38', 'eye_lmk_x_40', 'eye_lmk_y_40', 'eye_lmk_x_46', 'eye_lmk_y_46', 'eye_lmk_x_44', 'eye_lmk_y_44',
-    'eye_lmk_x_8', 'eye_lmk_y_8', 'eye_lmk_x_14', 'eye_lmk_y_14', 'eye_lmk_x_10', 'eye_lmk_y_10', 'eye_lmk_x_12', 'eye_lmk_y_12', 'eye_lmk_x_18', 'eye_lmk_y_18', 'eye_lmk_x_16', 'eye_lmk_y_16',
-    'eye_lmk_x_51', 'eye_lmk_y_51', 'eye_lmk_x_55', 'eye_lmk_y_55', 
-    'eye_lmk_x_23', 'eye_lmk_y_23', 'eye_lmk_x_27', 'eye_lmk_y_27', 
-    "gaze_angle_x", "gaze_angle_y",
-    "pose_Rx", "pose_Ry", "pose_Rz"
+# ------------------------ HELPERS ------------------------
+def eye_aspect_ratio(pts):
+    A = np.linalg.norm(pts[1]-pts[5])  # vertical
+    B = np.linalg.norm(pts[2]-pts[4])  # vertical
+    C = np.linalg.norm(pts[0]-pts[3])  # horizontal
+    return (A+B)/(2.0*C)
 
-]
+def frame_metrics(row):
+    """Return dict with 4 frame-level signals"""
+    # 1. Head movement magnitude (degrees)
+    head = np.sqrt(row["pose_Rx"]**2 + row["pose_Ry"]**2 + row["pose_Rz"]**2)
+    # 2. Gaze movement magnitude (radians)
+    gaze = np.sqrt(row["gaze_angle_x"]**2 + row["gaze_angle_y"]**2)
+    # 3. Average EAR across both eyes
+    left  = row.loc[[f"eye_lmk_x_{i}" for i in range(36,42)] +
+                    [f"eye_lmk_y_{i}" for i in range(36,42)]].values.reshape(6,2)
+    right = row.loc[[f"eye_lmk_x_{i}" for i in range(42,48)] +
+                    [f"eye_lmk_y_{i}" for i in range(42,48)]].values.reshape(6,2)
+    ear = (eye_aspect_ratio(left) + eye_aspect_ratio(right)) / 2.0
+    # 4. PDM scale (OpenFace already gives it)
+    p_scale = row["p_scale"]
+    return {"head": head, "gaze": gaze, "EAR": ear, "P_scale": p_scale}
 
-'''
-If AUs need to be added
-"AU01_r", "AU02_r", "AU04_r", "AU05_r", "AU06_r", "AU07_r", 
-"AU09_r", "AU10_r", "AU12_r", "AU14_r", "AU15_r", "AU17_r", 
-"AU20_r", "AU23_r", "AU25_r", "AU26_r", "AU45_r",
-"AU01_c", "AU02_c", "AU04_c", "AU05_c", "AU06_c", "AU07_c",
-"AU09_c", "AU10_c", "AU12_c", "AU14_c", "AU15_c", "AU17_c",
-"AU20_c", "AU23_c", "AU25_c", "AU26_c", "AU28_c", "AU45_c",  
-''' 
+def process_one(in_csv, out_dir):
+    df = pd.read_csv(in_csv, usecols=lambda c: c in NEED_COLS)
+    # Basic sanity filter
+    df = df[df["confidence"] > 0.75].reset_index(drop=True)
+    # Compute 4 signals
+    feat = pd.DataFrame([frame_metrics(row) for _, row in df.iterrows()])
+    # Keep timestamp for alignment later
+    feat.insert(0, "timestamp", df["timestamp"])
+    out_file = Path(out_dir) / Path(in_csv).name
+    feat.to_csv(out_file, index=False)
+    print("Saved", out_file)
 
-
-undesired_cols = [
-    'eye_lmk_x_36', 'eye_lmk_y_36', 'eye_lmk_x_42', 'eye_lmk_y_42', 'eye_lmk_x_38', 'eye_lmk_y_38', 'eye_lmk_x_40', 'eye_lmk_y_40', 'eye_lmk_x_46', 'eye_lmk_y_46', 'eye_lmk_x_44', 'eye_lmk_y_44',
-    'eye_lmk_x_8', 'eye_lmk_y_8', 'eye_lmk_x_14', 'eye_lmk_y_14', 'eye_lmk_x_10', 'eye_lmk_y_10', 'eye_lmk_x_12', 'eye_lmk_y_12', 'eye_lmk_x_18', 'eye_lmk_y_18', 'eye_lmk_x_16', 'eye_lmk_y_16',
-    'eye_lmk_x_51', 'eye_lmk_y_51', 'eye_lmk_x_55', 'eye_lmk_y_55', 
-    'eye_lmk_x_23', 'eye_lmk_y_23', 'eye_lmk_x_27', 'eye_lmk_y_27'
-
-]
-
-def calculate_ear(row):
-    """Calculate Eye Aspect Ratio from facial landmarks"""
-    def eye_aspect_ratio(eye_points):
-        # Vertical distances
-        A = np.linalg.norm(eye_points[3] - eye_points[5])
-        B = np.linalg.norm(eye_points[2] - eye_points[4])
-        # Horizontal distance
-        C = np.linalg.norm(eye_points[0] - eye_points[1])
-        return (A + B) / (2.0 * C)
-    
-    # Left eye landmarks
-    left_eye = np.array([
-        [row['eye_lmk_x_36'], row['eye_lmk_y_36']], # p1 
-        [row['eye_lmk_x_42'], row['eye_lmk_y_42']], # p4
-        [row['eye_lmk_x_38'], row['eye_lmk_y_38']], # p2
-        [row['eye_lmk_x_40'], row['eye_lmk_y_40']], # p3
-        [row['eye_lmk_x_46'], row['eye_lmk_y_46']], # p6
-        [row['eye_lmk_x_44'], row['eye_lmk_y_44']]  # p5
-    ])
-    
-    # Right eye landmarks
-    right_eye = np.array([
-        [row['eye_lmk_x_8'],  row['eye_lmk_y_8']],  # p1
-        [row['eye_lmk_x_14'], row['eye_lmk_y_14']], # p4
-        [row['eye_lmk_x_10'], row['eye_lmk_y_10']], # p2
-        [row['eye_lmk_x_12'], row['eye_lmk_y_12']], # p3
-        [row['eye_lmk_x_18'], row['eye_lmk_y_18']], # p6
-        [row['eye_lmk_x_16'], row['eye_lmk_y_16']]  # p5
-    ])
-    
-    return (eye_aspect_ratio(left_eye) + eye_aspect_ratio(right_eye)) / 2.0
-
-def calculate_pupil_scale(row, side):
-    try:
-        if side == "left":
-            dx = row['eye_lmk_x_51'] - row['eye_lmk_x_55']
-            dy = row['eye_lmk_y_51'] - row['eye_lmk_y_55']
-        elif side == "right":
-            dx = row['eye_lmk_x_23'] - row['eye_lmk_x_27']
-            dy = row['eye_lmk_y_23'] - row['eye_lmk_y_27']
-        return np.sqrt(dx**2 + dy**2)  # Euclidean distance
-    except:
-        return 0.0  # Return 0 if landmarks missing
-
-def filter_invalid_rows(df):
-    """Remove rows with physically impossible values"""
-    # Keep only rows where confidence > 0.75 (adjust threshold as needed)
-    df = df[df['confidence'] > 0.75]
-    
-    # Gaze angle sanity checks (typical range ±30 degrees)
-    df = df[
-        (df['gaze_angle_x'].between(-0.8, 0.8)) & 
-        (df['gaze_angle_y'].between(-0.8, 0.8))
-    ]
-    
-    # Head pose sanity checks (degrees)
-    df = df[
-        (df['pose_Rx'].between(-0.8, 0.8)) &  # Pitch
-        (df['pose_Ry'].between(-1.5708, 1.5708)) &  # Yaw
-        (df['pose_Rz'].between(-0.8, 0.8))    # Roll
-    ]
-    
-    # EAR validity (0.05-0.4 for normal eyes, <0.2 during blinks)
-    df = df[df['EAR'].between(0.02, 0.4)]
-    
-    # Pupil scale validity (3-30px typical for most video resolutions)
-    df = df[
-        (df['Pupil_Scale (Left)'].between(3, 30)) & 
-        (df['Pupil_Scale (Right)'].between(3, 30))
-    ]
-    
-    return df
-
-def process_csv(input_csv, output_dir):
-    """Process a single CSV file"""
-    df = pd.read_csv(input_csv, usecols=cols)
-    
-    # Add custom metrics
-    df['EAR'] = df.apply(calculate_ear, axis=1)
-    df['Pupil_Scale (Left)'] = df.apply(calculate_pupil_scale, axis=1, args= ("left",))
-    df['Pupil_Scale (Right)'] = df.apply(calculate_pupil_scale, axis=1, args=("right",))
-
-    df = df.drop(columns = undesired_cols)
-    df = filter_invalid_rows(df)
-    df = df.reset_index(drop=True)
-    # Save enhanced CSV
-    out_path = Path(output_dir) / Path(input_csv).name
-    df.to_csv(out_path, index=False)
-    print(f"Processed: {input_csv} -> {out_path}")
-
-def main(input_dir, output_dir):
-    """Batch process all CSVs in directory"""
-    # Create output directory if needed
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # Process all CSV files
-    csv_files = glob.glob(os.path.join(input_dir, "*.csv"))
-    if not csv_files:
-        print(f"No CSV files found in {input_dir}")
-        sys.exit(1)
-    
-    print(f"Processing {len(csv_files)} files...")
-    for csv_file in csv_files:
-        process_csv(csv_file, output_dir)
-    
-    print("\nProcessing complete! Enhanced CSVs saved to:", output_dir)
-
-if __name__ == "__main__":
-    main(input_path, output_path)
+# ------------------------ MAIN ------------------------
+os.makedirs(OUT_DIR, exist_ok=True)
+for csv_path in glob.glob(os.path.join(IN_DIR, "*.csv")):
+    process_one(csv_path, OUT_DIR)
