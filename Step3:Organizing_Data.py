@@ -18,7 +18,7 @@ os.makedirs(OUT_DIR, exist_ok=True)
 # ----------------------------------------------------------
 def make_windows(df):
     """Return (N,4) array where each row = mean over 150-frame window"""
-    vals = df[["head","gaze","EAR","P_scale"]].values
+    vals = df[["head","gaze","EAR","P_scale"]]
     N = len(vals) - WIN + 1
     if N <= 0:
         return None
@@ -29,17 +29,19 @@ def make_windows(df):
 def z_score_driver(driver_frames):
     """Use first 1/3 of sober frames to compute μ & σ, then normalize whole driver"""
     sober = driver_frames[driver_frames["BAC"]==0]
-    ref = sober.iloc[:len(sober)//3]          # first 1/3 sober
+    sober_first_third_number = len(sober)//3
+    ref = sober.iloc[:sober_first_third_number]          # first 1/3 sober
     mu  = ref[["head","gaze","EAR","P_scale"]].mean()
     std = ref[["head","gaze","EAR","P_scale"]].std().replace(0, 1)
     driver_frames[["head","gaze","EAR","P_scale"]] = \
         (driver_frames[["head","gaze","EAR","P_scale"]] - mu) / std
+    driver_frames = driver_frames[sober_first_third_number + 1:]
     return driver_frames
 
 # ----------------------------------------------------------
 # 1. Gather all frames into one table
 all_frames = []
-for csv in Path(DATA_DIR).glob("*.csv"):
+for csv in Sorted(Path(DATA_DIR).glob("*.csv")):
     driver, bac_str = csv.stem.rsplit("_", 1)
     bac = int(bac_str)
     df = pd.read_csv(csv)
@@ -64,5 +66,6 @@ for (driver, bac), sub in df_all.groupby(["driver","BAC"]):
     np.save(save_dir / f"{driver}_{bac}.npy", wins)
     np.save(save_dir / f"{driver}_{bac}_label.npy",
             np.full(len(wins), label, dtype=np.int8))
+
 
 print("Window extraction & normalization complete.")
