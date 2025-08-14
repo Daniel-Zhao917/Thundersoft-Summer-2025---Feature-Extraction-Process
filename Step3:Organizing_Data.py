@@ -36,10 +36,6 @@ def z_score_driver(driver_frames):
     driver_frames[["pose_Rx","pose_Ry","gaze_angle_x","gaze_angle_y","EAR","P_scale"]] = \
         (driver_frames[["pose_Rx","pose_Ry","gaze_angle_x","gaze_angle_y","EAR","P_scale"]] - mu) / std
     driver_frames = driver_frames[sober_first_third_number:]
-    mu_2 = driver_frames[["pose_Rx","pose_Ry","gaze_angle_x","gaze_angle_y","EAR","P_scale"]].mean()
-    std_2 = driver_frames[["pose_Rx","pose_Ry","gaze_angle_x","gaze_angle_y","EAR","P_scale"]].std().replace(0, 1)
-    driver_frames[["pose_Rx","pose_Ry","gaze_angle_x","gaze_angle_y","EAR","P_scale"]] = \
-        (driver_frames[["pose_Rx","pose_Ry","gaze_angle_x","gaze_angle_y","EAR","P_scale"]] - mu_2) / std_2
     return driver_frames
 
 # ----------------------------------------------------------
@@ -59,6 +55,11 @@ df_all = (df_all.groupby("driver", group_keys=False)
                 .apply(z_score_driver)
                 .reset_index(drop=True))
 
+for col in ["pose_Rx","pose_Ry","gaze_angle_x","gaze_angle_y","EAR","P_scale"]:
+    mean = df_all[col].mean()
+    std = df_all[col].std()
+    df_all.loc[:, col] = (df_all[col] - mean) / std
+
 # 3. Sliding-window summary per (driver, BAC)
 for (driver, bac), sub in df_all.groupby(["driver","BAC"]):
     wins = make_windows(sub)
@@ -73,4 +74,5 @@ for (driver, bac), sub in df_all.groupby(["driver","BAC"]):
 
 
 print("Window extraction & normalization complete.")
+
 
