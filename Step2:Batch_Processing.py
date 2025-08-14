@@ -13,7 +13,7 @@ OUT_DIR = '/Users/zhaoda/Desktop/step 2 csvs'
 
 # --- OpenFace columns we actually need (plugin outputs) ---
 NEED_COLS = ["frame", "timestamp",
-             "pose_Rx", "pose_Ry", "pose_Rz",
+             "pose_Rx", "pose_Ry",
              "gaze_angle_x", "gaze_angle_y",
              "p_scale"] + \
             [f"{xy}_{i}" for xy in ["x", "y"] for i in range(0, 55)]
@@ -51,8 +51,6 @@ def compute_ear(row):
     return (eye_aspect_ratio(left) + eye_aspect_ratio(right)) / 2.0
 # ---------- 2.  frame_metrics ----------
 def frame_metrics(row):
-    head = np.sqrt(row["pose_Rx"]**2 + row["pose_Ry"]**2)  # Exclude pose_Rz
-    gaze = np.sqrt(row["gaze_angle_x"]**2 + row["gaze_angle_y"]**2)
     psc  = row["p_scale"]
 
     # prefer plugin, fall back to manual EAR
@@ -61,13 +59,12 @@ def frame_metrics(row):
     else:
         ear = compute_ear(row)
 
-    return {"head": head, "gaze": gaze, "EAR": ear, "P_scale": psc}
+    return {"frame": row["frame"], "timestamp": row["timestamp"], "pose_Rx": row["pose_Rx"], "pose_Ry": row["pose_Ry"], "gaze_angle_x": row["gaze_angle_x"], "gaze_angle_y": row["gaze_angle_y"], "EAR": ear, "P_scale": psc}
 
 def process_one(in_csv, out_dir):
     df = pd.read_csv(in_csv, usecols=lambda c: c in NEED_COLS)
     # No filtering beyond basic sanity
     feat = pd.DataFrame([frame_metrics(row) for _, row in df.iterrows()])
-    feat.insert(0, "timestamp", df["timestamp"])
     out_file = Path(out_dir) / Path(in_csv).name
     feat.to_csv(out_file, index=False)
     print("Saved", out_file)
