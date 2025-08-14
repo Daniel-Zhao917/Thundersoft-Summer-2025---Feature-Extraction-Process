@@ -18,7 +18,7 @@ os.makedirs(OUT_DIR, exist_ok=True)
 # ----------------------------------------------------------
 def make_windows(df):
     """Return (N,4) array where each row = mean over 150-frame window"""
-    vals = df[["head","gaze","EAR","P_scale"]]
+    vals = df[["pose_Rx","pose_Ry","gaze_angle_x","gaze_angle_y","EAR","P_scale"]]
     N = len(vals) - WIN + 1
     if N <= 0:
         return None
@@ -31,17 +31,21 @@ def z_score_driver(driver_frames):
     sober = driver_frames[driver_frames["BAC"]==0]
     sober_first_third_number = len(sober)//3
     ref = sober.iloc[:sober_first_third_number]          # first 1/3 sober
-    mu  = ref[["head","gaze","EAR","P_scale"]].mean()
-    std = ref[["head","gaze","EAR","P_scale"]].std().replace(0, 1)
-    driver_frames[["head","gaze","EAR","P_scale"]] = \
-        (driver_frames[["head","gaze","EAR","P_scale"]] - mu) / std
-    driver_frames = driver_frames[sober_first_third_number + 1:]
+    mu  = ref[["pose_Rx","pose_Ry","gaze_angle_x","gaze_angle_y","EAR","P_scale"]].mean()
+    std = ref[["pose_Rx","pose_Ry","gaze_angle_x","gaze_angle_y","EAR","P_scale"]].std().replace(0, 1)
+    driver_frames[["pose_Rx","pose_Ry","gaze_angle_x","gaze_angle_y","EAR","P_scale"]] = \
+        (driver_frames[["pose_Rx","pose_Ry","gaze_angle_x","gaze_angle_y","EAR","P_scale"]] - mu) / std
+    driver_frames = driver_frames[sober_first_third_number:]
+    mu_2 = driver_frames[["pose_Rx","pose_Ry","gaze_angle_x","gaze_angle_y","EAR","P_scale"]].mean()
+    std_2 = driver_frames[["pose_Rx","pose_Ry","gaze_angle_x","gaze_angle_y","EAR","P_scale"]].std().replace(0, 1)
+    driver_frames[["pose_Rx","pose_Ry","gaze_angle_x","gaze_angle_y","EAR","P_scale"]] = \
+        (driver_frames[["pose_Rx","pose_Ry","gaze_angle_x","gaze_angle_y","EAR","P_scale"]] - mu_2) / std_2
     return driver_frames
 
 # ----------------------------------------------------------
 # 1. Gather all frames into one table
 all_frames = []
-for csv in Sorted(Path(DATA_DIR).glob("*.csv")):
+for csv in sorted(Path(DATA_DIR).glob("*.csv")):
     driver, bac_str = csv.stem.rsplit("_", 1)
     bac = int(bac_str)
     df = pd.read_csv(csv)
@@ -69,3 +73,4 @@ for (driver, bac), sub in df_all.groupby(["driver","BAC"]):
 
 
 print("Window extraction & normalization complete.")
+
