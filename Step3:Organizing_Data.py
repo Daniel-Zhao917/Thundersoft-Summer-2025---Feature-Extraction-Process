@@ -6,10 +6,10 @@ Step-3: 150-frame sliding windows + per-driver Z-score (as described in Keshtkar
 import os, numpy as np, pandas as pd
 from pathlib import Path
 
-DATA_DIR = "/Users/zhaoda/Desktop/8:14 step 2 CSVs"
-OUT_DIR  = "/Users/zhaoda/Desktop/8:15 windows (stride 1)"
+DATA_DIR = "/Users/zhaoda/Desktop/8:5 test out new feature extraction/Step 2 csvs"
+OUT_DIR  = "/Users/zhaoda/Desktop/8:5 test out new feature extraction/windows"
 WIN      = 150
-STRIDE   = 1
+STRIDE   = 75  # Using stride of half window size as per best practices for LSTM inputs
 BAC_MAP  = {"0":0, "5":1, "10":2}  # Sober, Low AII, Severe AII
 
 os.makedirs(OUT_DIR, exist_ok=True)
