@@ -12,7 +12,7 @@ IN_DIR  = '/Users/zhaoda/Desktop/8:6 RawCSVs'
 OUT_DIR = '/Users/zhaoda/Desktop/step 2 csvs'
 
 # --- OpenFace columns we actually need (plugin outputs) ---
-NEED_COLS = ["frame", "timestamp",
+NEED_COLS = ["frame", "timestamp", "confidence",
              "pose_Rx", "pose_Ry",
              "gaze_angle_x", "gaze_angle_y",
              "p_scale"] + \
@@ -51,6 +51,12 @@ def compute_ear(row):
     return (eye_aspect_ratio(left) + eye_aspect_ratio(right)) / 2.0
 # ---------- 2.  frame_metrics ----------
 def frame_metrics(row):
+    head_r = np.sqrt(pow(row['pose_Rx'], 2) + pow(row['pose_Ry'], 2))
+    head_theta = np.arctan2(row['pose_Ry'], row['pose_Rx'])
+
+    gaze_r = np.sqrt(pow(row['gaze_angle_x'], 2) + pow(row['gaze_angle_y'], 2))
+    gaze_theta = np.arctan2(row['gaze_angle_y'], row['gaze_angle_x'])
+  
     psc  = row["p_scale"]
 
     # prefer plugin, fall back to manual EAR
@@ -59,12 +65,13 @@ def frame_metrics(row):
     else:
         ear = compute_ear(row)
 
-    return {"frame": row["frame"], "timestamp": row["timestamp"], "pose_Rx": row["pose_Rx"], "pose_Ry": row["pose_Ry"], "gaze_angle_x": row["gaze_angle_x"], "gaze_angle_y": row["gaze_angle_y"], "EAR": ear, "P_scale": psc}
+    return {"frame": row["frame"], "timestamp": row["timestamp"], "confidence": row["confidence"], "head_r": head_r, "head_theta": head_theta, "pose_Rx": row["pose_Rx"], "pose_Ry": row["pose_Ry"], "gaze_angle_x": row["gaze_angle_x"], "gaze_angle_y": row["gaze_angle_y"], "gaze_r": gaze_r, "gaze_theta": gaze_theta, "EAR": ear, "P_scale": psc}
 
 def process_one(in_csv, out_dir):
     df = pd.read_csv(in_csv, usecols=lambda c: c in NEED_COLS)
-    # No filtering beyond basic sanity
     feat = pd.DataFrame([frame_metrics(row) for _, row in df.iterrows()])
+    # filters the rows where confidence is lower than 0.3
+    feat = feat[feat["confidence"] >= 0.3]
     out_file = Path(out_dir) / Path(in_csv).name
     feat.to_csv(out_file, index=False)
     print("Saved", out_file)
