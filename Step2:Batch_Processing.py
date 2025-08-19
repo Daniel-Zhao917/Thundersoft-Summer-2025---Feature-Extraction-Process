@@ -8,15 +8,19 @@ Usage:  python Step2_BatchProcessing.py <in_dir> <out_dir>
 import os, sys, glob, numpy as np, pandas as pd
 from pathlib import Path
 
-IN_DIR  = '/Users/zhaoda/Desktop/8:6 RawCSVs'
-OUT_DIR = '/Users/zhaoda/Desktop/step 2 csvs'
+IN_DIR  = '/Users/zhaoda/Desktop/ThundersoftSummer2025/Data/RawCSVs'
+OUT_DIR = '/Users/zhaoda/Desktop/8:19 step 2 CSVs (w:AUs 1-9)'
 
 # --- OpenFace columns we actually need (plugin outputs) ---
-NEED_COLS = ["frame", "timestamp", "confidence",
+BASE_COLS = ["frame", "timestamp", "confidence",
              "pose_Rx", "pose_Ry",
              "gaze_angle_x", "gaze_angle_y",
              "p_scale"] + \
             [f"{xy}_{i}" for xy in ["x", "y"] for i in range(0, 55)]
+
+# Add Action Units (AUs) columns
+AU_COLS = [f"AU{au:02d}_r" for au in [1,2,4,5,6,7,9]]
+NEED_COLS = BASE_COLS + AU_COLS
 
 # ---------- EAR helper ----------
 def eye_aspect_ratio(pts):
@@ -49,6 +53,7 @@ def compute_ear(row):
     ])
 
     return (eye_aspect_ratio(left) + eye_aspect_ratio(right)) / 2.0
+
 # ---------- 2.  frame_metrics ----------
 def frame_metrics(row):
     head_r = np.sqrt(pow(row['pose_Rx'], 2) + pow(row['pose_Ry'], 2))
@@ -64,8 +69,26 @@ def frame_metrics(row):
         ear = row["eye_lmk_EAR_avg"]
     else:
         ear = compute_ear(row)
+    
+    # Extract Action Units
+    au_features = {au: row[au] for au in AU_COLS if au in row.index}
 
-    return {"frame": row["frame"], "timestamp": row["timestamp"], "confidence": row["confidence"], "head_r": head_r, "head_theta": head_theta, "pose_Rx": row["pose_Rx"], "pose_Ry": row["pose_Ry"], "gaze_angle_x": row["gaze_angle_x"], "gaze_angle_y": row["gaze_angle_y"], "gaze_r": gaze_r, "gaze_theta": gaze_theta, "EAR": ear, "P_scale": psc}
+    return {
+        "frame": row["frame"], 
+        "timestamp": row["timestamp"], 
+        "confidence": row["confidence"], 
+        "head_r": head_r, 
+        "head_theta": head_theta, 
+        "pose_Rx": row["pose_Rx"], 
+        "pose_Ry": row["pose_Ry"], 
+        "gaze_angle_x": row["gaze_angle_x"], 
+        "gaze_angle_y": row["gaze_angle_y"], 
+        "gaze_r": gaze_r, 
+        "gaze_theta": gaze_theta, 
+        "EAR": ear, 
+        "P_scale": psc,
+        **au_features  # Include all AU features
+    }
 
 def process_one(in_csv, out_dir):
     df = pd.read_csv(in_csv, usecols=lambda c: c in NEED_COLS)

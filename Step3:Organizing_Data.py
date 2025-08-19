@@ -6,15 +6,21 @@ import pandas as pd
 from pathlib import Path
 
 # Configuration
-DATA_DIR = "/Users/zhaoda/Desktop/8:14 step 2 CSVs"
-OUT_DIR  = "/Users/zhaoda/Desktop/8:15 all windows (stride 75)"
+DATA_DIR = "/Users/zhaoda/Desktop/8:19 step 2 CSVs (w:AUs 1-9)"
+OUT_DIR  = "/Users/zhaoda/Desktop/8:19 windows w:AUs 1-9 only"
 WIN      = 150
 STRIDE   = 75  # 50% overlap for smoother LSTM input
 BAC_MAP  = {"0": 0, "5": 1, "10": 2}  # Sober, Low AII, Severe AII
-attribute_list = ["gaze_angle_x","gaze_angle_y","gaze_r","pose_Rx","pose_Ry","head_r","EAR","P_scale"]
+
+# Read first CSV to get AU column names
+example_csv = next(Path(DATA_DIR).glob("*.csv"))
+df_example = pd.read_csv(example_csv, nrows=1)
+au_cols = [col for col in df_example.columns if col.startswith('AU') and col.endswith('_r')]
+
+# Create attribute list with AUs
+attribute_list = ["gaze_angle_x","gaze_angle_y","gaze_r","pose_Rx","pose_Ry","head_r","EAR","P_scale"] + au_cols
 
 os.makedirs(OUT_DIR, exist_ok=True)
-
 
 # ----------------------------------------------------------
 def make_windows(df):
@@ -72,6 +78,5 @@ for (driver, bac), sub in df_all.groupby(["driver","BAC"]):
     np.save(save_dir / f"{driver}_{bac}.npy", wins)
     np.save(save_dir / f"{driver}_{bac}_label.npy",
             np.full(len(wins), label, dtype=np.int8))
-
 
 print("Window extraction & normalization complete.")
