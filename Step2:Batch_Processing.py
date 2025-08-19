@@ -5,7 +5,7 @@ OpenFace CSV  →  frame-level metrics  →  cleaned CSV
 Usage:  python Step2_BatchProcessing.py <in_dir> <out_dir>
 """
 
-import os, sys, glob, numpy as np, pandas as pd
+import os, sys, glob, numpy as np, pandas as pd, math
 from pathlib import Path
 
 IN_DIR  = '/Users/zhaoda/Desktop/ThundersoftSummer2025/Data/RawCSVs'
