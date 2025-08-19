@@ -56,18 +56,12 @@ for csv in sorted(Path(DATA_DIR).glob("*.csv")):
     all_frames.append(df)
 df_all = pd.concat(all_frames, ignore_index=True)
 
-# 2. Absolute value processing
-df_all["gaze_angle_x"] == abs(df_all["gaze_angle_x"])
-df_all["gaze_angle_y"] = abs(df_all["gaze_angle_y"])
-df_all["pose_Rx"] = abs(df_all["pose_Rx"])
-df_all["pose_Ry"] = abs(df_all["pose_Ry"])
-
-# 3. Per-driver Z-score
+# 2. Per-driver Z-score
 df_all = (df_all.groupby("driver", group_keys=False)
                 .apply(z_score_driver)
                 .reset_index(drop=True))
 
-# 4. Sliding-window summary per (driver, BAC)
+# 3. Sliding-window summary per (driver, BAC)
 for (driver, bac), sub in df_all.groupby(["driver","BAC"]):
     wins = make_windows(sub)
     if wins is None:
@@ -78,5 +72,6 @@ for (driver, bac), sub in df_all.groupby(["driver","BAC"]):
     np.save(save_dir / f"{driver}_{bac}.npy", wins)
     np.save(save_dir / f"{driver}_{bac}_label.npy",
             np.full(len(wins), label, dtype=np.int8))
+
 
 print("Window extraction & normalization complete.")
