@@ -55,21 +55,39 @@ def compute_ear(row):
     return (eye_aspect_ratio(left) + eye_aspect_ratio(right)) / 2.0
 
 # ---------- 2.  frame_metrics ----------
+def degree(int):
+    return (int / math.pi * 180)
+
+def absolute_value(int):
+    result = int
+    if (result < 0):
+        result = -result
+    return(result)
+
 def frame_metrics(row):
+    # radian to degree and absolute value
+    for attribute in ['pose_Rx', 'pose_Ry', 'gaze_angle_x', 'gaze_angle_y']:
+        row[attribute] = absolute_value(degree(row[attribute]))
+    
+    # square every attribute except ear 
+    for attribute in ['pose_Rx', 'pose_Ry', 'gaze_angle_x', 'gaze_angle_y', 'p_scale']:
+        row[attribute] = pow(row[attribute], 2)
+  
     head_r = np.sqrt(pow(row['pose_Rx'], 2) + pow(row['pose_Ry'], 2))
     head_theta = np.arctan2(row['pose_Ry'], row['pose_Rx'])
 
     gaze_r = np.sqrt(pow(row['gaze_angle_x'], 2) + pow(row['gaze_angle_y'], 2))
     gaze_theta = np.arctan2(row['gaze_angle_y'], row['gaze_angle_x'])
-  
-    psc  = row["p_scale"]
 
     # prefer plugin, fall back to manual EAR
     if "eye_lmk_EAR_avg" in row.index:
         ear = row["eye_lmk_EAR_avg"]
     else:
         ear = compute_ear(row)
-    
+
+    # because ear could < 1, but always greater than 0.05, thus first time ear by 20, then square
+    ear = pow(ear * 20, 2)
+  
     # Extract Action Units
     au_features = {au: row[au] for au in AU_COLS if au in row.index}
 
@@ -86,7 +104,7 @@ def frame_metrics(row):
         "gaze_r": gaze_r, 
         "gaze_theta": gaze_theta, 
         "EAR": ear, 
-        "P_scale": psc,
+        "P_scale": row["p_scale"],
         **au_features  # Include all AU features
     }
 
